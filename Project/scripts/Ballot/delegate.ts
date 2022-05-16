@@ -1,19 +1,12 @@
-import { ethers } from "ethers";
+import { ethers, Contract } from "ethers";
 import "dotenv/config";
 import * as ballotJson from "../../artifacts/contracts/Ballot.sol/Ballot.json";
+import { Ballot } from "../../typechain";
 
 // This key is already public on Herong's Tutorial Examples - v1.03, by Dr. Herong Yang
 // Do never expose your keys like this
 const EXPOSED_KEY =
   "a8b513369437e05aee54948867a86923858a71d5ac380e7db91fd9717e453909";
-
-function convertStringArrayToBytes32(array: string[]) {
-  const bytes32Array = [];
-  for (let index = 0; index < array.length; index++) {
-    bytes32Array.push(ethers.utils.formatBytes32String(array[index]));
-  }
-  return bytes32Array;
-}
 
 async function main() {
   const wallet =
@@ -26,34 +19,32 @@ async function main() {
   const balanceBN = await signer.getBalance();
   const balance = Number(ethers.utils.formatEther(balanceBN));
   const lastBlock = await provider.getBlock('latest');
-  console.log(`Connected to ropsten network at height ${lastBlock}`)
+//   console.log(`Connected to ropsten network at height`)
+//   console.log(lastBlock);
   console.log(`Wallet balance ${balance}`);
   if (balance < 0.01) {
     throw new Error("Not enough ether");
   }
-  
-  console.log("Deploying Ballot contract");
-  console.log("Proposals: ");
-  const proposals = process.argv.slice(2);
-  if (proposals.length < 2) throw new Error("Not enough proposals provided");
-  proposals.forEach((element, index) => {
-    console.log(`Proposal N. ${index + 1}: ${element}`);
-  });
-  const ballotFactory = new ethers.ContractFactory(
+  console.log("Delegating");
+  console.log("Delegating my vote...");
+  if(process.argv.length < 3) throw new Error("No user address provided")
+  const userAddress = process.argv[2];
+
+
+  console.log(`Voter address given as: ${userAddress}`);
+//   console.log(`Proposal given as: ${userAddress}`);
+
+  const ballotContract: Ballot = new Contract(
+    userAddress,
     ballotJson.abi,
-    ballotJson.bytecode,
     signer
-  );
-  const ballotContract = await ballotFactory.deploy(
-    convertStringArrayToBytes32(proposals)
-  );
-  console.log("Awaiting confirmations");
-  await ballotContract.deployed();
-  console.log("Completed");
-  console.log(`Contract deployed at ${ballotContract.address}`);
+  ) as Ballot;
+
+  ballotContract.delegate(userAddress);
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
